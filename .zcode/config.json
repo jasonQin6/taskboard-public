@@ -1,0 +1,29 @@
+{
+  "hooks": {
+    "enabled": true,
+    "events": {
+      "Stop": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "bash $HOME/.zcode/hooks/combo-extract.sh",
+              "timeoutMs": 5000,
+              "statusMessage": "issue-worker 组合行提取"
+            }
+          ]
+        },
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "bash -c 'exec bash \"$(git rev-parse --show-toplevel)/scripts/stop-retro.sh\"'",
+              "timeoutMs": 30000,
+              "statusMessage": "会话收尾 retro"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

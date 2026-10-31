@@ -1,0 +1,7 @@
+# taskboard 刻意不加入上层仓库的 pnpm workspace（独立性，见 SPEC.md）；
+# 这个文件把本目录声明为独立安装根，阻止 pnpm 向上吸附仓库根 workspace。
+packages:
+  - "."
+allowBuilds:
+  # tsx 依赖 esbuild；其 postinstall 只是平台二进制校验，放行。
+  esbuild: true

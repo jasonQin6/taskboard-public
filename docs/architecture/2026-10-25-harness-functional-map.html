@@ -1,0 +1,1421 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Taskboard Phase 1 — Harness 记忆聚合分层图</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f3efe4;
+      --paper-deep: #e7dfd0;
+      --ink: #172622;
+      --muted: #66736d;
+      --line: #c8bfad;
+      --white: #fffdf7;
+      --teal: #0b756b;
+      --teal-soft: #d8ece7;
+      --blue: #336d9c;
+      --blue-soft: #dce8f2;
+      --amber: #a9651d;
+      --amber-soft: #f5e3c8;
+      --coral: #b34a39;
+      --coral-soft: #f3dbd5;
+      --gray: #6d746f;
+      --gray-soft: #e5e4df;
+      --shadow: 0 18px 45px rgba(40, 49, 43, 0.09);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 8% 5%, rgba(11, 117, 107, 0.13), transparent 28rem),
+        radial-gradient(circle at 93% 4%, rgba(179, 74, 57, 0.09), transparent 25rem),
+        linear-gradient(rgba(23, 38, 34, 0.034) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(23, 38, 34, 0.034) 1px, transparent 1px),
+        var(--paper);
+      background-size: auto, auto, 28px 28px, 28px 28px, auto;
+      font-family: "Avenir Next", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+      line-height: 1.55;
+    }
+
+    code {
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    .page {
+      width: min(1540px, calc(100% - 48px));
+      margin: 0 auto;
+      padding: 38px 0 72px;
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      padding: clamp(28px, 4.2vw, 58px);
+      border: 1px solid rgba(23, 38, 34, 0.22);
+      border-radius: 30px;
+      background:
+        linear-gradient(120deg, rgba(255, 253, 247, 0.97), rgba(255, 253, 247, 0.74)),
+        repeating-linear-gradient(135deg, transparent 0 18px, rgba(11, 117, 107, 0.045) 18px 19px);
+      box-shadow: var(--shadow);
+    }
+
+    .hero::after {
+      content: "READ / ORGANIZE";
+      position: absolute;
+      right: -30px;
+      bottom: -18px;
+      color: rgba(23, 38, 34, 0.042);
+      font-family: "Iowan Old Style", "Songti SC", serif;
+      font-size: clamp(54px, 9vw, 132px);
+      font-weight: 800;
+      letter-spacing: -0.07em;
+      line-height: 0.82;
+      pointer-events: none;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      margin-bottom: 17px;
+      color: var(--teal);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.13em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 28px;
+      height: 2px;
+      background: currentColor;
+    }
+
+    h1, h2, h3, h4, p { margin-top: 0; }
+
+    h1 {
+      max-width: 1100px;
+      margin-bottom: 18px;
+      font-family: "Iowan Old Style", "Songti SC", "Noto Serif CJK SC", serif;
+      font-size: clamp(40px, 6vw, 82px);
+      font-weight: 760;
+      letter-spacing: -0.05em;
+      line-height: 0.98;
+    }
+
+    .lede {
+      max-width: 970px;
+      margin-bottom: 24px;
+      color: #43534d;
+      font-size: clamp(16px, 1.55vw, 20px);
+    }
+
+    .principle {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 16px;
+      align-items: start;
+      max-width: 1100px;
+      padding: 18px 20px;
+      border: 1px solid rgba(11, 117, 107, 0.28);
+      border-radius: 16px;
+      background: rgba(216, 236, 231, 0.55);
+    }
+
+    .principle-mark {
+      display: grid;
+      width: 40px;
+      height: 40px;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--teal);
+      color: white;
+      font-size: 18px;
+      font-weight: 900;
+    }
+
+    .principle strong { color: #075c55; }
+
+    .facts {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 24px;
+    }
+
+    .fact {
+      padding: 16px 18px;
+      border: 1px solid rgba(23, 38, 34, 0.16);
+      border-radius: 16px;
+      background: rgba(255, 253, 247, 0.7);
+    }
+
+    .fact-label {
+      margin-bottom: 4px;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .fact-value {
+      font-family: "Iowan Old Style", "Songti SC", serif;
+      font-size: clamp(20px, 2vw, 30px);
+      font-weight: 770;
+      letter-spacing: -0.025em;
+      line-height: 1.15;
+    }
+
+    .fact-note {
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .toolbar {
+      position: sticky;
+      z-index: 20;
+      top: 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 9px;
+      align-items: center;
+      margin: 28px 0 14px;
+      padding: 12px;
+      border: 1px solid rgba(23, 38, 34, 0.18);
+      border-radius: 16px;
+      background: rgba(243, 239, 228, 0.93);
+      box-shadow: 0 9px 30px rgba(41, 49, 43, 0.08);
+      backdrop-filter: blur(14px);
+    }
+
+    .toolbar-label {
+      margin-right: 3px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .filter-button {
+      appearance: none;
+      border: 1px solid rgba(23, 38, 34, 0.24);
+      border-radius: 999px;
+      padding: 8px 14px;
+      background: var(--white);
+      color: var(--ink);
+      cursor: pointer;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 700;
+      transition: transform 130ms ease, background 130ms ease, color 130ms ease;
+    }
+
+    .filter-button:hover { transform: translateY(-1px); }
+
+    .filter-button[aria-pressed="true"] {
+      border-color: var(--ink);
+      background: var(--ink);
+      color: var(--white);
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px 25px;
+      margin: 10px 2px 30px;
+      padding: 10px 2px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .swatch {
+      width: 14px;
+      height: 14px;
+      border: 1px solid rgba(23, 38, 34, 0.17);
+      border-radius: 4px;
+      border-left-width: 4px;
+    }
+
+    .swatch.existing { background: var(--teal-soft); border-left-color: var(--teal); }
+    .swatch.planned { background: var(--blue-soft); border-left-color: var(--blue); }
+    .swatch.partial { background: var(--amber-soft); border-left-color: var(--amber); }
+    .swatch.frozen { background: var(--gray-soft); border-left-color: var(--gray); }
+    .swatch.native { background: var(--coral-soft); border-left-color: var(--coral); }
+
+    .section-title {
+      display: flex;
+      gap: 18px;
+      align-items: end;
+      justify-content: space-between;
+      margin: 42px 0 18px;
+    }
+
+    .section-title h2 {
+      margin-bottom: 0;
+      font-family: "Iowan Old Style", "Songti SC", serif;
+      font-size: clamp(27px, 3vw, 42px);
+      letter-spacing: -0.035em;
+      line-height: 1.05;
+    }
+
+    .section-title p {
+      max-width: 700px;
+      margin-bottom: 2px;
+      color: var(--muted);
+      font-size: 13px;
+      text-align: right;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      align-items: stretch;
+    }
+
+    .flow-step {
+      position: relative;
+      padding: 16px;
+      border: 1px solid rgba(23, 38, 34, 0.17);
+      border-radius: 15px;
+      background: var(--white);
+    }
+
+    .flow-step:not(:last-child)::after {
+      content: "→";
+      position: absolute;
+      top: 50%;
+      right: -15px;
+      z-index: 2;
+      display: grid;
+      width: 20px;
+      height: 20px;
+      place-items: center;
+      transform: translateY(-50%);
+      color: var(--muted);
+      font-weight: 900;
+    }
+
+    .flow-index {
+      margin-bottom: 7px;
+      color: var(--teal);
+      font-family: "Iowan Old Style", "Songti SC", serif;
+      font-size: 24px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .flow-step h3 {
+      margin-bottom: 6px;
+      font-size: 13px;
+    }
+
+    .flow-step p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .layer-stack {
+      display: grid;
+      gap: 12px;
+    }
+
+    .layer {
+      display: grid;
+      grid-template-columns: 184px minmax(0, 1fr);
+      gap: 14px;
+      padding: 14px;
+      border: 1px solid rgba(23, 38, 34, 0.18);
+      border-radius: 20px;
+      background: rgba(255, 253, 247, 0.64);
+      box-shadow: 0 8px 22px rgba(41, 49, 43, 0.045);
+    }
+
+    .layer-head {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 120px;
+      padding: 10px 12px;
+      border-right: 1px solid var(--line);
+    }
+
+    .layer-kicker {
+      color: var(--teal);
+      font-family: "Iowan Old Style", "Songti SC", serif;
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .layer-name {
+      margin-top: 7px;
+      font-size: 18px;
+      font-weight: 850;
+      line-height: 1.2;
+    }
+
+    .layer-note {
+      margin-top: 7px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .modules {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .module {
+      --zone: var(--teal);
+      position: relative;
+      min-height: 120px;
+      padding: 15px;
+      border: 1px solid rgba(23, 38, 34, 0.15);
+      border-left: 5px solid var(--zone);
+      border-radius: 14px;
+      background: var(--white);
+      transition: opacity 150ms ease, transform 150ms ease, box-shadow 150ms ease;
+    }
+
+    .module:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 11px 24px rgba(41, 49, 43, 0.1);
+    }
+
+    .module.existing { --zone: var(--teal); }
+    .module.partial { --zone: var(--amber); background: linear-gradient(135deg, #fffdf7 0 72%, var(--amber-soft) 72% 100%); }
+    .module.planned { --zone: var(--blue); border-style: dashed; border-left-style: solid; background: rgba(220, 232, 242, 0.5); }
+    .module.frozen { --zone: var(--gray); background: var(--gray-soft); }
+    .module.native { --zone: var(--coral); background: linear-gradient(135deg, #fffdf7 0 74%, var(--coral-soft) 74% 100%); }
+    .module.is-dimmed { opacity: 0.16; }
+    .module.is-match { box-shadow: 0 0 0 2px rgba(11, 117, 107, 0.24); }
+
+    .module-top {
+      display: flex;
+      gap: 10px;
+      align-items: start;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .module h3 {
+      margin-bottom: 0;
+      font-size: 14px;
+      line-height: 1.3;
+    }
+
+    .badge {
+      flex: none;
+      padding: 3px 7px;
+      border-radius: 999px;
+      font-size: 9px;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+    }
+
+    .badge.existing { color: #075c55; background: var(--teal-soft); }
+    .badge.partial { color: #7f4710; background: var(--amber-soft); }
+    .badge.planned { color: #28577d; background: var(--blue-soft); }
+    .badge.frozen { color: #555d58; background: #d8d8d3; }
+    .badge.native { color: #7e2b20; background: var(--coral-soft); }
+
+    .module p {
+      margin-bottom: 9px;
+      color: #4e5d57;
+      font-size: 12px;
+      line-height: 1.48;
+    }
+
+    .paths {
+      color: #6d756f;
+      font-family: "SFMono-Regular", "Cascadia Code", "Noto Sans Mono", monospace;
+      font-size: 10px;
+      line-height: 1.55;
+    }
+
+    .coupling {
+      display: inline-block;
+      margin-top: 9px;
+      padding: 2px 7px;
+      border: 1px solid rgba(23, 38, 34, 0.14);
+      border-radius: 5px;
+      color: var(--muted);
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .split-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .panel {
+      padding: 22px;
+      border: 1px solid rgba(23, 38, 34, 0.18);
+      border-radius: 20px;
+      background: rgba(255, 253, 247, 0.76);
+      box-shadow: 0 9px 28px rgba(41, 49, 43, 0.045);
+    }
+
+    .panel h3 {
+      margin-bottom: 14px;
+      font-family: "Iowan Old Style", "Songti SC", serif;
+      font-size: 24px;
+      letter-spacing: -0.025em;
+    }
+
+    .panel ul {
+      margin: 0;
+      padding-left: 19px;
+      color: #40514a;
+      font-size: 13px;
+    }
+
+    .panel li + li { margin-top: 8px; }
+    .panel li strong { color: var(--ink); }
+
+    .priority-chain {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .priority-step {
+      position: relative;
+      padding: 17px 15px;
+      border: 1px solid rgba(23, 38, 34, 0.17);
+      border-radius: 15px;
+      background: var(--white);
+    }
+
+    .priority-step::before {
+      content: attr(data-step);
+      display: grid;
+      width: 27px;
+      height: 27px;
+      place-items: center;
+      margin-bottom: 10px;
+      border-radius: 50%;
+      background: var(--teal);
+      color: white;
+      font-size: 11px;
+      font-weight: 900;
+    }
+
+    .priority-step:nth-child(4)::before { background: var(--amber); }
+    .priority-step:nth-child(5)::before { background: var(--coral); }
+
+    .priority-step h3 {
+      margin-bottom: 5px;
+      font-size: 13px;
+    }
+
+    .priority-step p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .table-wrap {
+      width: 100%;
+      max-width: 100%;
+      overflow-x: auto;
+      border-radius: 12px;
+    }
+
+    .matrix {
+      width: 100%;
+      min-width: 760px;
+      border-collapse: separate;
+      border-spacing: 0 8px;
+      font-size: 12px;
+    }
+
+    .matrix th {
+      padding: 0 12px 4px;
+      color: var(--muted);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-align: left;
+      text-transform: uppercase;
+    }
+
+    .matrix td {
+      padding: 13px 12px;
+      border-top: 1px solid rgba(23, 38, 34, 0.14);
+      border-bottom: 1px solid rgba(23, 38, 34, 0.14);
+      background: rgba(255, 253, 247, 0.78);
+      vertical-align: top;
+    }
+
+    .matrix td:first-child {
+      border-left: 1px solid rgba(23, 38, 34, 0.14);
+      border-radius: 12px 0 0 12px;
+      font-weight: 800;
+    }
+
+    .matrix td:last-child {
+      border-right: 1px solid rgba(23, 38, 34, 0.14);
+      border-radius: 0 12px 12px 0;
+    }
+
+    .status-pill {
+      display: inline-block;
+      padding: 3px 7px;
+      border-radius: 5px;
+      font-size: 10px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .status-pill.existing { color: #075c55; background: var(--teal-soft); }
+    .status-pill.planned { color: #28577d; background: var(--blue-soft); }
+    .status-pill.partial { color: #7f4710; background: var(--amber-soft); }
+    .status-pill.frozen { color: #555d58; background: #d8d8d3; }
+    .status-pill.native { color: #7e2b20; background: var(--coral-soft); }
+
+    .callout {
+      margin-top: 16px;
+      padding: 17px 19px;
+      border-left: 5px solid var(--amber);
+      border-radius: 0 14px 14px 0;
+      background: var(--amber-soft);
+      color: #5d3d17;
+      font-size: 13px;
+    }
+
+    .callout strong { color: #3f290e; }
+
+    .frozen-band {
+      margin-top: 18px;
+      padding: 18px;
+      border: 1px dashed rgba(109, 116, 111, 0.5);
+      border-radius: 20px;
+      background: rgba(229, 228, 223, 0.54);
+    }
+
+    .frozen-band h3 {
+      margin-bottom: 5px;
+      font-family: "Iowan Old Style", "Songti SC", serif;
+      font-size: 24px;
+      letter-spacing: -0.025em;
+    }
+
+    .frozen-band > p {
+      margin-bottom: 14px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .footnote {
+      margin-top: 36px;
+      padding-top: 18px;
+      border-top: 1px solid rgba(23, 38, 34, 0.18);
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .footnote code {
+      padding: 1px 5px;
+      border-radius: 4px;
+      background: rgba(23, 38, 34, 0.07);
+      color: #43534d;
+      font-family: "SFMono-Regular", "Cascadia Code", monospace;
+    }
+
+    @media (max-width: 1180px) {
+      .modules { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .flow, .priority-chain { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .flow-step:not(:last-child)::after { display: none; }
+    }
+
+    @media (max-width: 860px) {
+      .page { width: min(100% - 24px, 1540px); padding-top: 18px; }
+      .hero { border-radius: 20px; }
+      .layer { grid-template-columns: 1fr; }
+      .layer-head {
+        min-height: auto;
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+      .modules { grid-template-columns: 1fr; }
+      .split-grid { grid-template-columns: 1fr; }
+      .flow, .priority-chain { grid-template-columns: 1fr; }
+      .section-title { display: block; }
+      .section-title p { margin-top: 8px; text-align: left; }
+    }
+
+    @media (max-width: 560px) {
+      .facts { grid-template-columns: 1fr; }
+      .principle { grid-template-columns: 1fr; }
+      .toolbar { position: static; }
+      .panel { padding: 17px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="hero">
+      <div class="eyebrow">Taskboard Phase 1 · Harness Memory Aggregation · 2026-10-25，2026-10-26 修订</div>
+      <h1>只读聚合，<br>不接管 Harness。</h1>
+      <p class="lede">
+        Agent harness 是自己记忆、会话和摘要的 owner；Taskboard 只负责读取这些记录，
+        归一成统一的会话视图，做展示和整理。Kanban 是 Taskboard 的 WebUI 名称，不是独立产品或数据库。
+        Phase 1 不创建会话、不发消息、不恢复线程、不设置 goal，也不驱动下一 turn。
+      </p>
+
+      <div class="principle">
+        <div class="principle-mark">1</div>
+        <div>
+          <strong>整理优先级：Harness 原生优先 → 确定性提取 → SystemOne 统一验证进度。</strong>
+          原生 compaction、recap、memory note、session metadata 能用就直接用；没有时才从已提取证据做整理。
+          SystemOne 默认经 Magpie 带外调用，只读标准化证据，只产展示型 ProgressVerdict；
+          绝不 resume、sample、发消息或写回 harness 存储。
+        </div>
+      </div>
+
+      <div class="facts">
+        <div class="fact">
+          <div class="fact-label">Codex 记忆读取</div>
+          <div class="fact-value">已有</div>
+          <div class="fact-note">rollout / archived / compacted / lineage</div>
+        </div>
+        <div class="fact">
+          <div class="fact-label">DeepSeek 记忆读取</div>
+          <div class="fact-value">规划中</div>
+          <div class="fact-note">先确认 native store、summary 与 discovery</div>
+        </div>
+        <div class="fact">
+          <div class="fact-label">SystemOne 进度判断</div>
+          <div class="fact-value">默认开启</div>
+          <div class="fact-note">经 Magpie 带外调用；只进入徽标与审计</div>
+        </div>
+        <div class="fact">
+          <div class="fact-label">驱动下一 turn</div>
+          <div class="fact-value">一阶段冻结</div>
+          <div class="fact-note">已有驱动代码不进入本阶段产品面</div>
+        </div>
+      </div>
+    </header>
+
+    <nav class="toolbar" aria-label="模块筛选">
+      <span class="toolbar-label">筛选</span>
+      <button class="filter-button" type="button" data-filter="all" aria-pressed="true">全部</button>
+      <button class="filter-button" type="button" data-filter="existing" aria-pressed="false">已有</button>
+      <button class="filter-button" type="button" data-filter="planned" aria-pressed="false">规划中</button>
+      <button class="filter-button" type="button" data-filter="partial" aria-pressed="false">需重构 / 部分</button>
+      <button class="filter-button" type="button" data-filter="native" aria-pressed="false">Harness 自有</button>
+      <button class="filter-button" type="button" data-filter="frozen" aria-pressed="false">一阶段冻结</button>
+    </nav>
+
+    <div class="legend">
+      <span class="legend-item"><span class="swatch existing"></span>已有，继续使用</span>
+      <span class="legend-item"><span class="swatch planned"></span>规划中</span>
+      <span class="legend-item"><span class="swatch partial"></span>已有但需重构</span>
+      <span class="legend-item"><span class="swatch native"></span>Harness 自有，不重写</span>
+      <span class="legend-item"><span class="swatch frozen"></span>代码已有，但本阶段不提供</span>
+    </div>
+
+    <div class="section-title">
+      <h2>Phase 1 读路径</h2>
+      <p>一条单向数据流：读取 native memory，归一化后展示。没有从展示层反向驱动 agent 的回边。</p>
+    </div>
+
+    <section class="flow">
+      <article class="flow-step">
+        <div class="flow-index">01</div>
+        <h3>Harness 自存记忆</h3>
+        <p>session / turn / compaction / recap / memory note / lineage。</p>
+      </article>
+      <article class="flow-step">
+        <div class="flow-index">02</div>
+        <h3>Harness 适配器</h3>
+        <p>发现来源、增量读取、解析原生格式，保留 source locator。</p>
+      </article>
+      <article class="flow-step">
+        <div class="flow-index">03</div>
+        <h3>统一记忆模型</h3>
+        <p>Thread / Turn / Evidence / Summary / Relationship，全部带 provenance。</p>
+      </article>
+      <article class="flow-step">
+        <div class="flow-index">04</div>
+        <h3>整理层</h3>
+        <p>原生摘要优先；其次确定性规则；进度语义统一由 SystemOne 验证并带 provenance。</p>
+      </article>
+      <article class="flow-step">
+        <div class="flow-index">05</div>
+        <h3>展示面</h3>
+        <p>Inbox、Kanban、线程时间线、搜索与来源核对。</p>
+      </article>
+    </section>
+
+    <div class="section-title">
+      <h2>功能分层</h2>
+      <p>按功能职责分层，不按代码目录分层。下层提供事实，上层做整理与展示；上层不能反向写 native memory。</p>
+    </div>
+
+    <main class="layer-stack">
+      <section class="layer">
+        <div class="layer-head">
+          <div>
+            <div class="layer-kicker">Functional layer 5</div>
+            <div class="layer-name">展示与人工整理</div>
+          </div>
+          <div class="layer-note">只修改 overlay，不修改 harness</div>
+        </div>
+        <div class="modules">
+          <article class="module existing" data-tags="existing">
+            <div class="module-top">
+              <h3>Inbox / 未绑定会话</h3>
+              <span class="badge existing">已有</span>
+            </div>
+            <p>发现未绑定任务的 thread，支持忽略与恢复；不为了摘要而 resume 任何会话。</p>
+            <div class="paths">现有：reader → inbox → ignore</div>
+            <span class="coupling">read-only</span>
+          </article>
+
+          <article class="module partial" data-tags="partial">
+            <div class="module-top">
+              <h3>Kanban 观察列</h3>
+              <span class="badge partial">需重释义</span>
+            </div>
+            <p>Inbox、进行中、需要关注、已完成、归档；原生状态投影加人工列覆盖，不复刻 V2 执行状态机。</p>
+            <div class="paths">web/src · views.ts · taskboard WebUI</div>
+            <span class="coupling">manual / observed</span>
+          </article>
+
+          <article class="module existing" data-tags="existing">
+            <div class="module-top">
+              <h3>线程时间线与证据</h3>
+              <span class="badge existing">已有</span>
+            </div>
+            <p>Turn、可见消息、工具状态、文件变更、摘要、lineage；证据可回到 source locator。</p>
+            <div class="paths">Thread detail · turns · evidence</div>
+            <span class="coupling">provenance</span>
+          </article>
+
+          <article class="module existing" data-tags="existing">
+            <div class="module-top">
+              <h3>搜索 / 过滤 / workspace</h3>
+              <span class="badge existing">已有</span>
+            </div>
+            <p>按标题、标签、摘要和线程标题检索；按 workspace 分组，不把不同项目混成一张板。</p>
+            <div class="paths">web/src/lib/search.ts · board model</div>
+            <span class="coupling">overlay only</span>
+          </article>
+
+          <article class="module partial" data-tags="partial">
+            <div class="module-top">
+              <h3>人工绑定与标注</h3>
+              <span class="badge partial">部分已有</span>
+            </div>
+            <p>线程绑定任务、忽略、打标签、注释、归档；这些都是 overlay 操作，不写回 agent memory。</p>
+            <div class="paths">bind / ignore / annotate / label</div>
+            <span class="coupling">organize only</span>
+          </article>
+
+          <article class="module planned" data-tags="planned">
+            <div class="module-top">
+              <h3>来源核对面板</h3>
+              <span class="badge planned">规划中</span>
+            </div>
+            <p>一处显示“这条进度来自原生状态还是 SystemOne”，并跳回原始 rollout / session / evidence。</p>
+            <div class="paths">planned：provenance inspector</div>
+            <span class="coupling">trust surface</span>
+          </article>
+        </div>
+      </section>
+
+      <section class="layer">
+        <div class="layer-head">
+          <div>
+            <div class="layer-kicker">Functional layer 4</div>
+            <div class="layer-name">整理与归并</div>
+          </div>
+          <div class="layer-note">从证据生成可读结论</div>
+        </div>
+        <div class="modules">
+          <article class="module existing" data-tags="existing">
+            <div class="module-top">
+              <h3>原生摘要提取</h3>
+              <span class="badge existing">已有</span>
+            </div>
+            <p>优先读取 harness 自己写入的 compacted / recap / memory note，不从 transcript 重造摘要。</p>
+            <div class="paths">Codex：compacted summary</div>
+            <span class="coupling">native-first</span>
+          </article>
+
+          <article class="module partial" data-tags="partial">
+            <div class="module-top">
+              <h3>确定性整理规则</h3>
+              <span class="badge partial">部分已有</span>
+            </div>
+            <p>按 workspace、父/子 thread、fork/lineage、任务绑定和标签归并；规则结果也必须标 provenance。</p>
+            <div class="paths">lineage · grouping · binding</div>
+            <span class="coupling">rule-based</span>
+          </article>
+
+          <article class="module partial" data-tags="partial">
+            <div class="module-top">
+              <h3>SystemOne 进度判断</h3>
+              <span class="badge partial">需接入</span>
+            </div>
+            <p>只读取脱敏、截断的归一化证据，产出 ProgressVerdict；不生成下一步执行动作，不触碰 native session。</p>
+            <div class="paths">规划：progress/systemone · providers/magpie</div>
+            <span class="coupling">verdict / read-only</span>
+          </article>
+
+          <article class="module planned" data-tags="planned">
+            <div class="module-top">
+              <h3>Workstream 人工整理</h3>
+              <span class="badge planned">规划中</span>
+            </div>
+            <p>命名视图、绑定、标签、备注和列覆盖；只写 Taskboard overlay，不自动改 Harness 或执行状态。</p>
+            <div class="paths">planned：workstream · overlay audit</div>
+            <span class="coupling">overlay only</span>
+          </article>
+
+          <article class="module partial" data-tags="partial">
+            <div class="module-top">
+              <h3>语义状态 / 需要关注</h3>
+              <span class="badge partial">部分已有</span>
+            </div>
+            <p>仅作徽标与筛选：progressing / waiting_user / blocked / needs_attention；不驱动任务列或执行。</p>
+            <div class="paths">current semanticStatus 仍为占位</div>
+            <span class="coupling">display only</span>
+          </article>
+
+          <article class="module planned" data-tags="planned">
+            <div class="module-top">
+              <h3>SystemOne 策略与预算</h3>
+              <span class="badge planned">规划中</span>
+            </div>
+            <p>缓存键、可见范围、并发、超时、每日预算、断路器和逐调用审计；无新证据不重复判断。</p>
+            <div class="paths">planned：progress policy</div>
+            <span class="coupling">provenance chain</span>
+          </article>
+        </div>
+      </section>
+
+      <section class="layer">
+        <div class="layer-head">
+          <div>
+            <div class="layer-kicker">Functional layer 3</div>
+            <div class="layer-name">统一记忆模型</div>
+          </div>
+          <div class="layer-note">不同 harness 的共同语言</div>
+        </div>
+        <div class="modules">
+          <article class="module existing" data-tags="existing">
+            <div class="module-top">
+              <h3>Thread / Turn / Evidence</h3>
+              <span class="badge existing">已有</span>
+            </div>
+            <p>统一的会话、轮次与最小证据模型；只存派生摘要和索引，不复制完整 transcript。</p>
+            <div class="paths">src/types.ts · src/store/*</div>
+            <span class="coupling">normalized</span>
+          </article>
+
+          <article class="module existing" data-tags="existing">
+            <div class="module-top">
+              <h3>Summary + provenance</h3>
+              <span class="badge existing">已有</span>
+            </div>
+            <p>每条摘要记录来源：native compacted / recap / rule / jev / external；展示时不混淆可信度。</p>
+            <div class="paths">summary provenance 字段</div>
+            <span class="coupling">source-typed</span>
+          </article>
+
+          <article class="module partial" data-tags="partial">
+            <div class="module-top">
+              <h3>源身份 / lineage / 去重</h3>
+              <span class="badge partial">需扩展</span>
+            </div>
+            <p>session 身份需带 harness/source namespace；fork、rollback、archived、文件移动都要稳定收敛。</p>
+            <div class="paths">source_id · lineage · canonical id</div>
+            <span class="coupling">multi-source</span>
+          </article>
+
+          <article class="module existing" data-tags="existing">
+            <div class="module-top">
+              <h3>脱敏 / 长度 / 保留</h3>
+              <span class="badge existing">已有</span>
+            </div>
+            <p>只保存短摘录、reasoning summary、工具状态和路径；证据有保留策略，不长期复制私密内容。</p>
+            <div class="paths">redact.ts · retention settings</div>
+            <span class="coupling">privacy boundary</span>
+          </article>
+
+          <article class="module planned" data-tags="planned">
+            <div class="module-top">
+              <h3>组织关系图</h3>
+              <span class="badge planned">规划中</span>
+            </div>
+            <p>任务↔thread、thread↔parent、workstream↔workspace；关系可人工修正，推导关系保留来源。</p>
+            <div class="paths">planned：relationship overlay</div>
+            <span class="coupling">linkable</span>
+          </article>
+
+          <article class="module planned" data-tags="planned">
+            <div class="module-top">
+              <h3>统一能力清单</h3>
+              <span class="badge planned">规划中</span>
+            </div>
+            <p>每个 adapter 声明：能否发现、能否读 native summary、能否增量、是否支持 lineage；不能就明确不可用。</p>
+            <div class="paths">planned：adapter capabilities</div>
+            <span class="coupling">capability-first</span>
+          </article>
+        </div>
+      </section>
+
+      <section class="layer">
+        <div class="layer-head">
+          <div>
+            <div class="layer-kicker">Functional layer 2</div>
+            <div class="layer-name">Harness 读取适配器</div>
+          </div>
+          <div class="layer-note">每个 harness 自己的读取实现</div>
+        </div>
+        <div class="modules">
+          <article class="module existing" data-tags="existing">
+            <div class="module-top">
+              <h3>Codex memory adapter</h3>
+              <span class="badge existing">已有</span>
+            </div>
+            <p>sessions / archived_sessions、JSONL/zst、fork/rollback、subagent、compacted、坏行 anomaly。</p>
+            <div class="paths">src/reader/parse.ts · read.ts · scanner.ts</div>
+            <span class="coupling">Codex-specific</span>
+          </article>
+
+          <article class="module planned" data-tags="planned">
+            <div class="module-top">
+              <h3>DeepSeek memory adapter</h3>
+              <span class="badge planned">规划中</span>
+            </div>
+            <p>先找到它真实保存的 session / memory / summary 来源；不能假设它有 Codex 的 compacted 或 event_msg。</p>
+            <div class="paths">planned：src/agents/deepseek/reader</div>
+            <span class="coupling">DeepSeek-specific</span>
+          </article>
+
+          <article class="module planned" data-tags="planned">
+            <div class="module-top">
+              <h3>通用文件 / DB / API 连接器</h3>
+              <span class="badge planned">规划中</span>
+            </div>
+            <p>当其他 harness 只暴露导出文件、SQLite 或只读 API 时，用通用 connector 接入。</p>
+            <div class="paths">planned：connectors/*</div>
+            <span class="coupling">read-only</span>
+          </article>
+
+          <article class="module planned" data-tags="planned">
+            <div class="module-top">
+              <h3>ACP 可选读取通道</h3>
+              <span class="badge planned">非主路径</span>
+            </div>
+            <p>ACP 不是记忆源，也没有全局 session 枚举；只有 harness 明确提供只读 session 读取时才作为补充。</p>
+            <div class="paths">planned：acp-read transport</div>
+            <span class="coupling">optional</span>
+          </article>
+
+          <article class="module partial" data-tags="partial">
+            <div class="module-top">
+              <h3>Adapter capability manifest</h3>
+              <span class="badge partial">需补</span>
+            </div>
+            <p>声明 discovery、native summary、incremental、lineage、live update 等能力；上层不得猜测。</p>
+            <div class="paths">planned：capabilities descriptor</div>
+            <span class="coupling">explicit</span>
+          </article>
+
+          <article class="module planned" data-tags="planned">
+            <div class="module-top">
+              <h3>Adapter 契约测试</h3>
+              <span class="badge planned">规划中</span>
+            </div>
+            <p>固定 fixture 验证同一套归一化输出；不把 Codex 的字段形状强加给 DeepSeek。</p>
+            <div class="paths">planned：test/connectors/*</div>
+            <span class="coupling">conformance</span>
+          </article>
+        </div>
+      </section>
+
+      <section class="layer">
+        <div class="layer-head">
+          <div>
+            <div class="layer-kicker">Functional layer 1</div>
+            <div class="layer-name">Harness 自有记忆</div>
+          </div>
+          <div class="layer-note">事实源，不是 Taskboard 实现</div>
+        </div>
+        <div class="modules">
+          <article class="module native" data-tags="native">
+            <div class="module-top">
+              <h3>Codex session store</h3>
+              <span class="badge native">Harness 自有</span>
+            </div>
+            <p>rollout、thread metadata、compaction 记录、archive 状态；目前通过只读扫描接入。</p>
+            <div class="paths">CODEX_HOME/sessions · archived_sessions</div>
+            <span class="coupling">source of truth</span>
+          </article>
+
+          <article class="module native" data-tags="native">
+            <div class="module-top">
+              <h3>Codex native summary</h3>
+              <span class="badge native">Harness 自有</span>
+            </div>
+            <p>harness 自己写下的 compacted 内容；Taskboard 只提取，不生成、不改写、不重新解释。</p>
+            <div class="paths">compacted payload.message</div>
+            <span class="coupling">extract only</span>
+          </article>
+
+          <article class="module native" data-tags="native">
+            <div class="module-top">
+              <h3>Codex native extensions</h3>
+              <span class="badge native">Harness 自有</span>
+            </div>
+            <p>goal、sample、approval、resume 等属于 Codex；Phase 1 不使用这些写邻接能力。</p>
+            <div class="paths">app-server / thread lock</div>
+            <span class="coupling">frozen for phase 1</span>
+          </article>
+
+          <article class="module native" data-tags="native">
+            <div class="module-top">
+              <h3>DeepSeek native memory</h3>
+              <span class="badge native">待确认</span>
+            </div>
+            <p>需要实测其 session/memory 格式、是否自带 summary、是否能稳定导出；未确认前不做抽象。</p>
+            <div class="paths">DeepSeek Harness 自存目录 / API</div>
+            <span class="coupling">research first</span>
+          </article>
+
+          <article class="module native" data-tags="native">
+            <div class="module-top">
+              <h3>SystemOne API</h3>
+              <span class="badge native">默认启用</span>
+            </div>
+            <p>只接收 Taskboard 归一化后的证据，默认经 Magpie 返回 ProgressVerdict；不接触 Harness 原始会话。</p>
+            <div class="paths">systemone → magpie provider</div>
+            <span class="coupling">verdict only</span>
+          </article>
+
+          <article class="module native" data-tags="native">
+            <div class="module-top">
+              <h3>Gateway / ACP（可选）</h3>
+              <span class="badge native">非本阶段核心</span>
+            </div>
+            <p>若未来需要统一 live session 访问，可放在 adapter 下；它不提供记忆、摘要或全局枚举。</p>
+            <div class="paths">optional transport boundary</div>
+            <span class="coupling">not memory</span>
+          </article>
+        </div>
+      </section>
+
+      <section class="layer">
+        <div class="layer-head">
+          <div>
+            <div class="layer-kicker">Cross-cutting</div>
+            <div class="layer-name">平台与安全</div>
+          </div>
+          <div class="layer-note">只保存 overlay 与索引</div>
+        </div>
+        <div class="modules">
+          <article class="module existing" data-tags="existing">
+            <div class="module-top">
+              <h3>SQLite overlay / index</h3>
+              <span class="badge existing">已有</span>
+            </div>
+            <p>Taskboard 的唯一状态库；native session 仍是事实源，数据库只存派生证据、摘要、关系与审计。</p>
+            <div class="paths">src/db.ts · src/store/*</div>
+            <span class="coupling">derived</span>
+          </article>
+
+          <article class="module existing" data-tags="existing">
+            <div class="module-top">
+              <h3>增量扫描 / 去重 / 游标</h3>
+              <span class="badge existing">已有</span>
+            </div>
+            <p>inode、prefix hash、tail hash、字节游标、重写检测、半行处理、坏行 anomaly；读取可重入收敛。</p>
+            <div class="paths">src/reader/scanner.ts · parse.ts</div>
+            <span class="coupling">idempotent</span>
+          </article>
+
+          <article class="module existing" data-tags="existing">
+            <div class="module-top">
+              <h3>HTTP / CLI / SSE / 静态前端</h3>
+              <span class="badge existing">已有</span>
+            </div>
+            <p>只提供读与 overlay 写；Phase 1 不暴露 agent run/send/cancel/goal 等驱动动作。</p>
+            <div class="paths">http.ts · cli.ts · routes.ts · web/</div>
+            <span class="coupling">read + organize</span>
+          </article>
+
+          <article class="module existing" data-tags="existing">
+            <div class="module-top">
+              <h3>单写者 / 锁 / 保留 / 安全</h3>
+              <span class="badge existing">已有</span>
+            </div>
+            <p>SQLite 单写者、单实例锁、loopback、CSRF、脱敏、保留策略；scan 只读 native memory。</p>
+            <div class="paths">daemon-lock · http-guard · redact</div>
+            <span class="coupling">platform</span>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <div class="section-title">
+      <h2>整理优先级</h2>
+      <p>先问 Harness 有没有；进度语义统一由 SystemOne 验证。每一层都必须留下 provenance。</p>
+    </div>
+
+    <section class="priority-chain">
+      <article class="priority-step" data-step="1">
+        <h3>Native summary</h3>
+        <p>compacted / recap / memory note；零写、最高保真。</p>
+      </article>
+      <article class="priority-step" data-step="2">
+        <h3>Native metadata</h3>
+        <p>标题、状态、parent/fork、session locator；直接读取。</p>
+      </article>
+      <article class="priority-step" data-step="3">
+        <h3>确定性提取</h3>
+        <p>turn、可见消息、工具状态、文件变更、token；只做投影。</p>
+      </article>
+      <article class="priority-step" data-step="4">
+        <h3>SystemOne 进度</h3>
+        <p>基于已入库证据产生 ProgressVerdict；不接触 native session，不驱动下一 turn。</p>
+      </article>
+      <article class="priority-step" data-step="5">
+        <h3>Unknown + 原因</h3>
+        <p>失败、超时、超预算或非法输出时如实降级，不猜测进度。</p>
+      </article>
+    </section>
+
+    <div class="section-title">
+      <h2>Harness 能力矩阵</h2>
+      <p>读取层只承诺 harness 真正提供的能力；“没有该能力”是合法结果，不生成替代实现。</p>
+    </div>
+
+    <section class="panel">
+      <div class="table-wrap">
+        <table class="matrix">
+          <thead>
+            <tr>
+              <th>来源</th>
+              <th>记忆来源</th>
+              <th>原生摘要</th>
+              <th>发现方式</th>
+              <th>Phase 1 定位</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Codex</td>
+              <td>sessions / archived_sessions rollout JSONL（含 zst）</td>
+              <td>compacted <code>payload.message</code></td>
+              <td>文件系统扫描</td>
+              <td><span class="status-pill existing">已有</span> 只读读取</td>
+            </tr>
+            <tr>
+              <td>DeepSeek Harness</td>
+              <td>待实测：session store / export / DB / API</td>
+              <td>待确认是否有 native summary / recap</td>
+              <td>独立 adapter（不能假设与 Codex 同构）</td>
+              <td><span class="status-pill planned">规划中</span> 先调研再接</td>
+            </tr>
+            <tr>
+              <td>ACP</td>
+              <td>不是记忆源</td>
+              <td>无标准 summary</td>
+              <td>无全局 session 枚举</td>
+              <td><span class="status-pill planned">可选</span> 只读 transport，非主路径</td>
+            </tr>
+            <tr>
+              <td>SystemOne / Magpie</td>
+              <td>无（消费 Taskboard 证据）</td>
+              <td>不生成 native summary</td>
+              <td>不适用</td>
+              <td><span class="status-pill planned">规划中</span> 默认进度判断</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="section-title">
+      <h2>Phase 1 边界</h2>
+      <p>显示、读取、整理是产品；驱动、恢复、审批、执行不是本阶段产品。</p>
+    </div>
+
+    <section class="split-grid">
+      <article class="panel">
+        <h3>提供</h3>
+        <ul>
+          <li><strong>读取：</strong>发现、增量扫描、解析、去重、索引、source locator。</li>
+          <li><strong>展示：</strong>Inbox、Kanban、线程详情、turn 时间线、证据、搜索。</li>
+          <li><strong>整理：</strong>native summary 提取、确定性归并、SystemOne 进度判断与 Workstream overlay。</li>
+          <li><strong>人工 overlay：</strong>绑定、解绑、忽略、恢复、标签、注释、归档。</li>
+        </ul>
+      </article>
+
+      <article class="panel">
+        <h3>不提供</h3>
+        <ul>
+          <li><strong>不驱动：</strong>create thread、send message、cancel、resume、sample、fork、compact、goal。</li>
+          <li><strong>不自动推进：</strong>cron 触发 agent run、级联执行、automatic next action、自动 mark_done。</li>
+          <li><strong>不代答审批：</strong>不替用户批准 tool/permission，也不伪造 approval 结果。</li>
+          <li><strong>不写 native memory：</strong>不修复、不压缩、不改写、不删除 harness 自己的会话记录。</li>
+        </ul>
+      </article>
+    </section>
+
+    <div class="frozen-band">
+      <h3>一阶段冻结：代码已有，但不进入产品面</h3>
+      <p>这些模块当前仓库里已有实现，不能误删；Phase 1 通过运行时装配、路由和入口隔离，不作为验收目标，也不继续扩展。</p>
+      <div class="modules">
+        <article class="module frozen" data-tags="frozen">
+          <div class="module-top">
+            <h3>Run 驱动</h3>
+            <span class="badge frozen">冻结</span>
+          </div>
+          <p>创建/发送/取消/等待 agent turn；改为 observer-only 后不再作为核心路径。</p>
+          <div class="paths">src/runs.ts</div>
+        </article>
+        <article class="module frozen" data-tags="frozen">
+          <div class="module-top">
+            <h3>Goal / Sample</h3>
+            <span class="badge frozen">冻结</span>
+          </div>
+          <p>Codex native goal 与 thread/sample 保留为未来能力，一阶段不 resume Inbox。</p>
+          <div class="paths">src/goals.ts · src/summary.ts</div>
+        </article>
+        <article class="module frozen" data-tags="frozen">
+          <div class="module-top">
+            <h3>自动化 / 提案执行</h3>
+            <span class="badge frozen">冻结</span>
+          </div>
+          <p>shadow/live、下一动作、自动执行继续保留；一阶段只允许整理建议，不执行建议。</p>
+          <div class="paths">src/automation.ts · src/jev-executor.ts</div>
+        </article>
+        <article class="module frozen" data-tags="frozen">
+          <div class="module-top">
+            <h3>Agent cron / cascade</h3>
+            <span class="badge frozen">冻结</span>
+          </div>
+          <p>cron 可保留为“刷新/重建索引”的内部调度；不触发 agent run。</p>
+          <div class="paths">src/cron-ticker.ts · runs cascade</div>
+        </article>
+      </div>
+    </div>
+
+    <div class="section-title">
+      <h2>现有代码如何收敛</h2>
+      <p>不是重写 Taskboard；先复用读取/展示/存储，再把整理从驱动路径里拆出来。</p>
+    </div>
+
+    <section class="panel">
+      <div class="table-wrap">
+        <table class="matrix">
+          <thead>
+            <tr>
+              <th>处置</th>
+              <th>模块</th>
+              <th>目标</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="status-pill existing">复用</span></td>
+              <td><code>src/reader/*</code>、<code>src/store/*</code>、<code>src/views.ts</code>、<code>src/http.ts</code>、<code>web/src/*</code></td>
+              <td>保留读取、增量、索引、展示和来源定位；它们是 Phase 1 的主体。</td>
+            </tr>
+            <tr>
+              <td><span class="status-pill partial">重构</span></td>
+              <td><code>src/summary.ts</code>、<code>src/jev.ts</code>、<code>src/types.ts</code></td>
+              <td>把 summary 从 sample 写路径解耦；新增 SystemOne ProgressVerdict 与 Magpie provider；扩展 provenance/身份模型。</td>
+            </tr>
+            <tr>
+              <td><span class="status-pill planned">新增</span></td>
+              <td>ZCode/DeepSeek reader、通用 connector、SystemOne policy、Workstream overlay</td>
+              <td>按功能端口扩展，不在 Codex reader 里做 if/else。</td>
+            </tr>
+            <tr>
+              <td><span class="status-pill frozen">冻结</span></td>
+              <td><code>src/runs.ts</code>、<code>src/goals.ts</code>、<code>src/automation.ts</code>、<code>src/jev-executor.ts</code></td>
+              <td>保留代码与测试，但一阶段不暴露驱动动作；不要把“已有”误当成“本阶段需求”。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="callout">
+      <strong>最重要的修正：</strong>Taskboard 不应该把 Codex 的 app-server 或 ACP agent 当成自己要实现的下游运行时。
+      它只读取 Harness 已经保存的记忆；能读到原生摘要就用原生摘要，进度语义则由默认经 Magpie 调用的 SystemOne 统一验证。
+      一旦需要 resume、sample、send 或 goal 才能拿到信息，就已经越过 Phase 1 的只读边界。
+    </div>
+
+    <div class="footnote">
+      依据：<code>docs/spec/phase1-observation-mvp.md</code>、<code>docs/REQUIREMENTS.md</code>、
+      <code>docs/adr/0017-observation-slice-boundary.md</code>、<code>docs/adr/0018-cross-harness-facts.md</code>、
+      <code>docs/adr/0019-systemone-progress.md</code>、<code>docs/research/2026-10-21-codex-app-server-runtime-facts.md</code>、
+      <code>docs/research/2026-10-21-codex-goal-workflows-acp-codexhost.md</code>、
+      <code>docs/adr/0003-jsonl-authoritative-read-only-scan.md</code>、<code>0008-harness-owned-summaries.md</code>、
+      <code>0013-complete-codex-not-reimplement.md</code>，以及当前 <code>src/reader/*</code>、<code>src/store/*</code>、
+      <code>src/http.ts</code>、<code>web/src/*</code> 的实际形态。
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      const buttons = [...document.querySelectorAll("[data-filter]")];
+      const modules = [...document.querySelectorAll(".module")];
+
+      const apply = (filter) => {
+        for (const button of buttons) {
+          button.setAttribute("aria-pressed", String(button.dataset.filter === filter));
+        }
+        for (const module of modules) {
+          const tags = (module.dataset.tags || "").split(/\s+/);
+          const match = filter === "all" || tags.includes(filter);
+          module.classList.toggle("is-dimmed", !match);
+          module.classList.toggle("is-match", filter !== "all" && match);
+        }
+      };
+
+      for (const button of buttons) {
+        button.addEventListener("click", () => apply(button.dataset.filter || "all"));
+      }
+    })();
+  </script>
+</body>
+</html>

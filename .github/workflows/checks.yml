@@ -1,0 +1,51 @@
+name: checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: checks-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: typecheck + test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      # pnpm/setup 是 pnpm/action-setup 的官方后继：一步装 pnpm 与 Node，且跑在 node24 运行时上
+      - uses: pnpm/setup@v3
+        with:
+          version: 11.21.0
+          runtime: node@24
+          cache: true
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+
+  ui-smoke:
+    name: ui smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      # pnpm/setup 是 pnpm/action-setup 的官方后继：一步装 pnpm 与 Node，且跑在 node24 运行时上
+      - uses: pnpm/setup@v3
+        with:
+          version: 11.21.0
+          runtime: node@24
+          cache: true
+          # 两个 job 同 key 并发写缓存会互相抢锁，只让 checks 写，这里只读
+          save-cache: false
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      # CI=true 让缺浏览器变成硬失败（脚本本地才允许 SKIP），避免 ui job 假绿
+      - run: pnpm test:ui
+        env:
+          CI: "true"

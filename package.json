@@ -1,0 +1,35 @@
+{
+  "name": "taskboard",
+  "version": "0.1.0",
+  "private": true,
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "description": "Independent task board daemon observing and driving Codex threads. V2 rewrite on SQLite.",
+  "type": "module",
+  "bin": {
+    "taskboard": "./dist/cli.js"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "build:web": "vite build web",
+    "dev": "tsx src/cli.ts",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.scripts.json --noEmit && tsc -p web/tsconfig.json --noEmit && tsc -p tsconfig.issue-worker.json --noEmit",
+    "test": "tsx --test test/*.test.ts",
+    "test:ui": "pnpm build:web && tsx scripts/ui-smoke.ts",
+    "watch:threads": "tsx scripts/watch-threads.ts",
+    "smoke:systemone": "tsx scripts/systemone-smoke.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "playwright": "^1.64.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "vite": "^8.3.4"
+  }
+}

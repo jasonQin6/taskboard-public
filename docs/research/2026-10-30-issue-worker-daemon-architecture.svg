@@ -1,0 +1,280 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1120" viewBox="0 0 1800 1120" font-family="'PingFang SC','Hiragino Sans GB','Noto Sans CJK SC',sans-serif">
+  <defs>
+    <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse">
+      <path d="M 24 0 L 0 0 0 24" fill="none" stroke="#D9D5C8" stroke-width="0.6" opacity="0.55"/>
+    </pattern>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#3E4C56"/>
+    </marker>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#2E6B4F"/>
+    </marker>
+    <marker id="arrow-amber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#B45309"/>
+    </marker>
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#A61B1B"/>
+    </marker>
+    <style>
+      .title { font-size: 34px; font-weight: 700; fill: #1B262E; }
+      .subtitle { font-size: 15px; fill: #5B6770; }
+      .col { font-size: 15px; font-weight: 700; letter-spacing: 1px; fill: #5B6770; }
+      .panel-title { font-size: 18px; font-weight: 700; }
+      .box-title { font-size: 16px; font-weight: 700; }
+      .body { font-size: 13px; fill: #4A5861; }
+      .mono { font-family: 'SFMono-Regular', Menlo, monospace; font-size: 12.5px; fill: #3B4952; }
+      .tiny { font-size: 11.5px; fill: #6B7780; }
+      .label { font-size: 12px; font-weight: 600; fill: #3E4C56; }
+      .num { font-size: 12px; font-weight: 700; fill: #FFFFFF; }
+      .box { stroke-width: 1.4; }
+    </style>
+  </defs>
+
+  <rect width="1800" height="1120" fill="#F7F5EE"/>
+  <rect width="1800" height="1120" fill="url(#grid)"/>
+
+  <text x="60" y="62" class="title">issue-worker daemon 架构</text>
+  <text x="60" y="92" class="subtitle">确定性控制面 + ZCode DWF 执行面：v4 直启并订阅；daemon 自身 0 次模型调用，模型只在实现/审计 subagent</text>
+
+  <!-- legend -->
+  <g transform="translate(1110,36)">
+    <rect x="0" y="0" width="630" height="72" rx="8" fill="#FFFFFF" stroke="#D8D4C8"/>
+    <rect x="16" y="16" width="14" height="14" rx="3" fill="#2E6B4F"/>
+    <text x="38" y="28" class="tiny">外部真相源</text>
+    <rect x="136" y="16" width="14" height="14" rx="3" fill="#24323D"/>
+    <text x="158" y="28" class="tiny">确定性 daemon</text>
+    <rect x="286" y="16" width="14" height="14" rx="3" fill="#B45309"/>
+    <text x="308" y="28" class="tiny">ZCode 进程 / 运行时</text>
+    <rect x="456" y="16" width="14" height="14" rx="3" fill="#A61B1B"/>
+    <text x="478" y="28" class="tiny">LLM 调用点</text>
+    <rect x="16" y="44" width="14" height="14" rx="3" fill="#FFFFFF" stroke="#A61B1B" stroke-dasharray="3 2"/>
+    <text x="38" y="56" class="tiny">虚线 = 仅 fallback，且不参与决策</text>
+  </g>
+
+  <!-- column headers -->
+  <text x="60" y="150" class="col">① 外部真相源</text>
+  <text x="480" y="150" class="col">② 确定性控制面 · 0 LLM</text>
+  <text x="1180" y="150" class="col">③ ZCode 执行面 · 模型只在这里</text>
+  <line x1="455" y1="130" x2="455" y2="1060" stroke="#D8D4C8" stroke-width="1"/>
+  <line x1="1155" y1="130" x2="1155" y2="1060" stroke="#D8D4C8" stroke-width="1"/>
+
+  <!-- truth: GitHub -->
+  <g>
+    <rect x="60" y="190" width="380" height="190" rx="12" fill="#E7F0E9" stroke="#2E6B4F" class="box"/>
+    <text x="82" y="222" class="box-title" fill="#24513D">GitHub · 业务真相</text>
+    <text x="82" y="250" class="body">issue 正文 / 全部评论 / labels</text>
+    <text x="82" y="274" class="body">原生 blockedBy + Depends on</text>
+    <text x="82" y="298" class="body">open PR · review · checks</text>
+    <text x="82" y="330" class="mono">gh issue / gh pr / gh api</text>
+    <text x="82" y="354" class="tiny">daemon 独占写：comment · label · PR</text>
+  </g>
+
+  <!-- truth: git remote -->
+  <g>
+    <rect x="60" y="420" width="380" height="150" rx="12" fill="#E7F0E9" stroke="#2E6B4F" class="box"/>
+    <text x="82" y="452" class="box-title" fill="#24513D">git remote</text>
+    <text x="82" y="480" class="body">origin/main</text>
+    <text x="82" y="504" class="body">issue-&lt;n&gt;-&lt;slug&gt; 短分支</text>
+    <text x="82" y="528" class="body">remote head = 本地 HEAD（ls-remote 回读）</text>
+  </g>
+
+  <!-- daemon panel -->
+  <rect x="480" y="165" width="650" height="880" rx="14" fill="#FFFFFF" stroke="#24323D" stroke-width="1.5"/>
+  <rect x="480" y="165" width="650" height="44" rx="14" fill="#24323D"/>
+  <rect x="480" y="195" width="650" height="14" fill="#24323D"/>
+  <text x="500" y="195" class="panel-title" fill="#FFFFFF">确定性 daemon · 0 次模型调用</text>
+
+  <!-- scheduler -->
+  <g>
+    <rect x="510" y="230" width="590" height="70" rx="10" fill="#EEF1F3" stroke="#24323D" class="box"/>
+    <text x="528" y="257" class="box-title" fill="#1E2A32">Scheduler</text>
+    <text x="528" y="282" class="body">5 分钟 gh 轮询 · --once · 后续接 GitHub App webhook</text>
+  </g>
+
+  <!-- eligibility -->
+  <g>
+    <rect x="510" y="320" width="590" height="80" rx="10" fill="#EEF1F3" stroke="#24323D" class="box"/>
+    <text x="528" y="347" class="box-title" fill="#1E2A32">Eligibility（纯函数）</text>
+    <text x="528" y="372" class="body">ready-for-agent + 无 open blocker + 无 open PR + input_digest 去重</text>
+  </g>
+
+  <!-- claim + monitor -->
+  <g>
+    <rect x="510" y="420" width="285" height="110" rx="10" fill="#EEF1F3" stroke="#24323D" class="box"/>
+    <text x="528" y="447" class="box-title" fill="#1E2A32">Claim / lease</text>
+    <text x="528" y="472" class="body">BEGIN IMMEDIATE</text>
+    <text x="528" y="494" class="mono">state.sqlite3</text>
+    <text x="528" y="516" class="mono">singleton.lock</text>
+  </g>
+  <g>
+    <rect x="815" y="420" width="285" height="110" rx="10" fill="#EEF1F3" stroke="#24323D" class="box"/>
+    <text x="833" y="447" class="box-title" fill="#1E2A32">Run monitor</text>
+    <text x="833" y="472" class="body">PID + runId + commandId</text>
+    <text x="833" y="494" class="body">v4 subscribe 主路径</text>
+    <text x="833" y="516" class="body">DB 只读兜底 · 墙钟超时</text>
+  </g>
+
+  <!-- git + gate -->
+  <g>
+    <rect x="510" y="550" width="285" height="95" rx="10" fill="#EEF1F3" stroke="#24323D" class="box"/>
+    <text x="528" y="577" class="box-title" fill="#1E2A32">Git adapter</text>
+    <text x="528" y="602" class="body">fetch · branch · rebase</text>
+    <text x="528" y="624" class="body">HEAD · push · ls-remote</text>
+  </g>
+  <g>
+    <rect x="815" y="550" width="285" height="95" rx="10" fill="#EEF1F3" stroke="#24323D" class="box"/>
+    <text x="833" y="577" class="box-title" fill="#1E2A32">Gate runner</text>
+    <text x="833" y="602" class="body">typecheck + test</text>
+    <text x="833" y="624" class="body">test:ui 条件追加 · 精确 SHA</text>
+  </g>
+
+  <!-- audit + outbox -->
+  <g>
+    <rect x="815" y="665" width="285" height="95" rx="10" fill="#EEF1F3" stroke="#24323D" class="box"/>
+    <text x="833" y="692" class="box-title" fill="#1E2A32">Audit launcher</text>
+    <text x="833" y="717" class="body">auditor.dwf.ts</text>
+    <text x="833" y="739" class="body">校验 reviewedSha == headSha</text>
+  </g>
+  <g>
+    <rect x="510" y="665" width="285" height="95" rx="10" fill="#EEF1F3" stroke="#24323D" class="box"/>
+    <text x="528" y="692" class="box-title" fill="#1E2A32">Outbox / delivery</text>
+    <text x="528" y="717" class="body">push · PR · comment · labels</text>
+    <text x="528" y="739" class="body">idempotency key + 前置探测</text>
+  </g>
+
+  <!-- recovery -->
+  <g>
+    <rect x="510" y="780" width="590" height="70" rx="10" fill="#EEF1F3" stroke="#24323D" class="box"/>
+    <text x="528" y="807" class="box-title" fill="#1E2A32">Recovery / reconcile</text>
+    <text x="528" y="832" class="body">DB ↔ label ↔ git ↔ PR；进程死、run 未结算、工作区脏、main 前进</text>
+  </g>
+
+  <!-- no-llm note -->
+  <g>
+    <rect x="510" y="875" width="590" height="145" rx="10" fill="#F5F7F8" stroke="#8A959D" stroke-dasharray="4 3"/>
+    <text x="528" y="902" class="box-title" fill="#1E2A32">为什么控制面不需要模型</text>
+    <text x="528" y="930" class="body">选票、去重、重试、门、push、PR、评论、label 都有可执行判据：</text>
+    <text x="528" y="954" class="body">label / blockedBy / exit code / SHA / HTTP 结果。</text>
+    <text x="528" y="982" class="body">模型只在任务本身需要理解代码时进入：实现与审计。</text>
+  </g>
+
+  <!-- ZCode panel -->
+  <rect x="1180" y="165" width="560" height="880" rx="14" fill="#FFFBF4" stroke="#B45309" stroke-width="1.5"/>
+  <rect x="1180" y="165" width="560" height="44" rx="14" fill="#B45309"/>
+  <rect x="1180" y="195" width="560" height="14" fill="#B45309"/>
+  <text x="1200" y="195" class="panel-title" fill="#FFFFFF">ZCode 执行面 · 模型只在这两个红框</text>
+
+  <!-- control adapter -->
+  <g>
+    <rect x="1200" y="230" width="520" height="155" rx="10" fill="#FDF0DC" stroke="#B45309" class="box"/>
+    <text x="1218" y="257" class="box-title" fill="#7C3A05">ZCode control adapter</text>
+    <rect x="1218" y="270" width="484" height="48" rx="7" fill="#FFFFFF" stroke="#B45309"/>
+    <text x="1232" y="287" class="mono" fill="#7C3A05">createSession → subscribe → startSavedWorkflow</text>
+    <text x="1232" y="305" class="tiny">scope=project · ACK { runId, toolCallId } · no model turn</text>
+    <rect x="1218" y="326" width="484" height="42" rx="7" fill="#FFFFFF" stroke="#A61B1B" stroke-dasharray="4 3"/>
+    <text x="1232" y="345" class="mono" fill="#A61B1B">fallback: zcode -p + CreateWorkflow（仅传输，不决策）</text>
+    <text x="1232" y="361" class="tiny">只有 v4 capability 不可用时启用</text>
+  </g>
+
+  <!-- runtime -->
+  <g>
+    <rect x="1200" y="405" width="520" height="325" rx="10" fill="#FFF6E8" stroke="#B45309" class="box"/>
+    <text x="1218" y="432" class="box-title" fill="#7C3A05">zcode app-server --stdio（受 daemon 监管的子进程）</text>
+    <text x="1218" y="454" class="tiny">DWF engine：journal · world.run · subagent 调度 · same --cwd / single writer</text>
+
+    <rect x="1220" y="470" width="480" height="112" rx="8" fill="#FBE9E7" stroke="#A61B1B" class="box"/>
+    <text x="1238" y="496" class="box-title" fill="#8A1616">issue-to-pr.dwf.ts</text>
+    <text x="1238" y="521" class="body">Reader / Implementer subagents　<tspan fill="#A61B1B" font-weight="700">[LLM]</tspan></text>
+    <text x="1238" y="545" class="body">world.run：git add/commit、pnpm gates　<tspan fill="#2E6B4F" font-weight="600">[确定性]</tspan></text>
+    <text x="1238" y="568" class="mono" fill="#8A1616">returns headSha · commits · gates</text>
+
+    <rect x="1220" y="600" width="480" height="112" rx="8" fill="#FBE9E7" stroke="#A61B1B" class="box"/>
+    <text x="1238" y="626" class="box-title" fill="#8A1616">auditor.dwf.ts</text>
+    <text x="1238" y="651" class="body">Auditor subagent：只读精确 SHA 的 diff　<tspan fill="#A61B1B" font-weight="700">[LLM]</tspan></text>
+    <text x="1238" y="675" class="body">world.run：git status / git log　<tspan fill="#2E6B4F" font-weight="600">[确定性]</tspan></text>
+    <text x="1238" y="698" class="mono" fill="#8A1616">returns verdict · findings · reviewedSha</text>
+  </g>
+
+  <!-- db -->
+  <g>
+    <rect x="1200" y="760" width="520" height="120" rx="10" fill="#EEF1F3" stroke="#24323D" class="box"/>
+    <text x="1218" y="787" class="box-title" fill="#1E2A32">~/.zcode/cli/db/db.sqlite · 兜底</text>
+    <text x="1218" y="813" class="mono">dwf_run: status · args_json · result_json · failure_json</text>
+    <text x="1218" y="838" class="body">只读取完整 result；v4 投影只给实时终态和 resultPreview</text>
+    <text x="1218" y="862" class="tiny">WAL · 短读事务 · 不写 ZCode DB · SIGKILL 孤儿由墙钟裁决</text>
+  </g>
+
+  <!-- llm note -->
+  <g>
+    <rect x="1200" y="905" width="520" height="115" rx="10" fill="#FBE9E7" stroke="#A61B1B" stroke-dasharray="4 3"/>
+    <text x="1218" y="932" class="box-title" fill="#8A1616">LLM 的职责边界</text>
+    <text x="1218" y="958" class="body">实现：理解 issue、读代码、改代码、补测试。</text>
+    <text x="1218" y="982" class="body">审计：审查精确 SHA、产出 finding 与 verdict。</text>
+    <text x="1218" y="1006" class="body">调度、重试、门、推送、评论、恢复：一律不经模型。</text>
+  </g>
+
+  <!-- arrows -->
+  <!-- 1 GitHub -> Eligibility (scan) -->
+  <path d="M 440 250 L 470 250 L 470 345 L 508 345" fill="none" stroke="#2E6B4F" stroke-width="1.6" marker-end="url(#arrow-green)"/>
+  <g transform="translate(455,250)">
+    <circle cx="0" cy="0" r="11" fill="#2E6B4F"/><text x="-4" y="4" class="num">1</text>
+  </g>
+  <text x="476" y="300" class="tiny" fill="#2E6B4F">scan</text>
+
+  <!-- 2 Eligibility -> Claim -->
+  <path d="M 805 400 L 805 418" fill="none" stroke="#3E4C56" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <g transform="translate(855,409)">
+    <circle cx="0" cy="0" r="11" fill="#3E4C56"/><text x="-4" y="4" class="num">2</text>
+  </g>
+
+  <!-- 3 daemon -> control adapter (start run) -->
+  <path d="M 1100 345 L 1138 345 L 1138 290 L 1198 290" fill="none" stroke="#B45309" stroke-width="1.8" marker-end="url(#arrow-amber)"/>
+  <g transform="translate(1138,320)">
+    <circle cx="0" cy="0" r="11" fill="#B45309"/><text x="-4" y="4" class="num">3</text>
+  </g>
+
+  <!-- control adapter -> runtime -->
+  <path d="M 1460 385 L 1460 403" fill="none" stroke="#B45309" stroke-width="1.8" marker-end="url(#arrow-amber)"/>
+
+  <!-- runtime -> db -->
+  <path d="M 1460 730 L 1460 758" fill="none" stroke="#B45309" stroke-width="1.8" marker-end="url(#arrow-amber)"/>
+
+  <!-- v4 subscribe frames -> run monitor -->
+  <path d="M 1198 352 L 1168 352 L 1168 500 L 1102 500" fill="none" stroke="#B45309" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#arrow-amber)"/>
+  <text x="1175" y="425" class="tiny" fill="#B45309" transform="rotate(-90 1175 425)" text-anchor="middle">subscribe frames</text>
+
+  <!-- 4 db -> run monitor (exact result / fallback) -->
+  <path d="M 1198 820 L 1138 820 L 1138 475 L 1102 475" fill="none" stroke="#24323D" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#arrow)"/>
+  <g transform="translate(1168,820)">
+    <circle cx="0" cy="0" r="11" fill="#24323D"/><text x="-4" y="4" class="num">4</text>
+  </g>
+  <text x="1147" y="600" class="tiny" transform="rotate(-90 1147 600)" text-anchor="middle">exact result / fallback</text>
+
+  <!-- Git adapter <-> remote -->
+  <path d="M 510 597 L 450 597 L 450 540 L 442 540" fill="none" stroke="#2E6B4F" stroke-width="1.5" marker-end="url(#arrow-green)"/>
+
+  <!-- Gate -> Audit -->
+  <path d="M 940 645 L 940 663" fill="none" stroke="#3E4C56" stroke-width="1.6" marker-end="url(#arrow)"/>
+
+  <!-- Audit -> Outbox (approved) -->
+  <path d="M 815 730 L 797 730" fill="none" stroke="#3E4C56" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <text x="815" y="774" class="tiny">approved</text>
+
+  <!-- 5 Outbox -> GitHub / git remote -->
+  <path d="M 510 730 L 465 730 L 465 382 L 442 382" fill="none" stroke="#2E6B4F" stroke-width="1.8" marker-end="url(#arrow-green)"/>
+  <g transform="translate(465,730)">
+    <circle cx="0" cy="0" r="11" fill="#2E6B4F"/><text x="-4" y="4" class="num">5</text>
+  </g>
+  <text x="471" y="700" class="tiny" fill="#2E6B4F">delivery</text>
+
+  <!-- 6 Audit launcher -> runtime auditor -->
+  <path d="M 1100 712 L 1162 712 L 1162 656 L 1218 656" fill="none" stroke="#A61B1B" stroke-width="1.6" marker-end="url(#arrow-red)"/>
+  <g transform="translate(1162,690)">
+    <circle cx="0" cy="0" r="11" fill="#A61B1B"/><text x="-4" y="4" class="num">6</text>
+  </g>
+  <text x="1172" y="748" class="tiny" fill="#A61B1B" transform="rotate(-90 1172 748)" text-anchor="middle">auditor run</text>
+
+  <!-- footer -->
+  <text x="60" y="1082" class="tiny">图例：实线 = 确定性的命令/数据流；虚线 = 只读观测或 fallback；红色 = 唯一的模型调用点。</text>
+  <text x="1470" y="1082" class="tiny">design · 2026-10-30</text>
+</svg>

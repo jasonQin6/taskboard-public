@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>issue-worker daemon 架构草图</title>
+  <style>
+    :root {
+      --paper: #f7f5ee;
+      --ink: #1b262e;
+      --muted: #5b6770;
+      --line: #d8d4c8;
+      --green: #2e6b4f;
+      --amber: #b45309;
+      --red: #a61b1b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 32px;
+      background: var(--paper);
+      color: var(--ink);
+      font: 15px/1.6 "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", sans-serif;
+    }
+    header { max-width: 1600px; margin: 0 auto 20px; }
+    h1 { margin: 0 0 6px; font-size: 30px; letter-spacing: .01em; }
+    .sub { margin: 0; color: var(--muted); }
+    .badge {
+      display: inline-block; margin-bottom: 12px; padding: 2px 8px;
+      border: 1px solid var(--red); color: var(--red); border-radius: 999px;
+      font-size: 12px; letter-spacing: .08em;
+    }
+    .answer {
+      max-width: 1600px; margin: 18px auto; padding: 16px 20px;
+      background: #fff; border: 1px solid var(--line); border-left: 5px solid var(--green);
+      border-radius: 10px;
+    }
+    .answer strong { color: var(--green); }
+    .diagram {
+      max-width: 1600px; margin: 20px auto; background: #fff;
+      border: 1px solid var(--line); border-radius: 12px; padding: 10px;
+    }
+    .diagram img { display: block; width: 100%; height: auto; border-radius: 8px; }
+    table { width: 100%; max-width: 1600px; margin: 20px auto; border-collapse: collapse; background: #fff; }
+    th, td { padding: 10px 12px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { background: #eef1f3; font-size: 13px; letter-spacing: .04em; }
+    td.no { color: var(--green); font-weight: 700; }
+    td.yes { color: var(--red); font-weight: 700; }
+    code { font-family: "SFMono-Regular", Menlo, monospace; font-size: 13px; }
+    footer { max-width: 1600px; margin: 24px auto 0; color: var(--muted); font-size: 13px; }
+  </style>
+</head>
+<body>
+  <header>
+    <span class="badge">PROTOTYPE · 设计草图</span>
+    <h1>issue-worker daemon 架构</h1>
+    <p class="sub">问题：daemon 作为独立外部监控，究竟哪一部分需要 LLM？</p>
+  </header>
+
+  <section class="answer">
+    <strong>答：控制面一次模型都不用。</strong>
+    daemon 只做确定性的事：扫描、选票、claim/lease、重试、跑门、push、开 PR、评论、label、恢复。
+    模型只出现在两个 DWF 的执行 subagent 里：<code>issue-to-pr.dwf.ts</code> 的
+    Reader/Implementer，以及 <code>auditor.dwf.ts</code> 的 Auditor。
+    daemon 通过 app-server v4 直接 <code>createSession</code>、订阅 conversation、再
+    <code>startSavedWorkflow</code>。上一版设计里的 <code>zcode -p</code> 启动器 turn
+    只是 v4 不可用时的 fallback，不参与任何决策。
+  </section>
+
+  <section class="diagram">
+    <img src="2026-10-30-issue-worker-daemon-architecture.svg" alt="issue-worker daemon 架构图">
+  </section>
+
+  <table>
+    <thead>
+      <tr><th>模块</th><th>是否调用 LLM</th><th>判定依据</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Scheduler / Eligibility</td><td class="no">否</td><td>label、blockedBy、Depends on、已有 PR、input_digest</td></tr>
+      <tr><td>Claim / lease / SQLite</td><td class="no">否</td><td><code>BEGIN IMMEDIATE</code>、lease 过期、singleton lock</td></tr>
+      <tr><td>Git adapter / Gate runner</td><td class="no">否</td><td>SHA、ancestry、<code>pnpm</code> 退出码</td></tr>
+      <tr><td>Outbox / delivery</td><td class="no">否</td><td>gh 返回、ls-remote、幂等键</td></tr>
+      <tr><td>Recovery / reconcile</td><td class="no">否</td><td>DB、label、HEAD、PR 的可观察状态</td></tr>
+      <tr><td>ZCode control adapter</td><td class="no">否（首选路径）</td><td>v4 <code>createSession</code> + <code>subscribe</code> + <code>startSavedWorkflow</code>，无 model turn</td></tr>
+      <tr><td>Run monitor</td><td class="no">否</td><td>v4 <code>workflowRuns</code> / <code>run-settled</code> 为主；DB 只读取完整结果，并设墙钟超时</td></tr>
+      <tr><td>ZCode control adapter（fallback）</td><td class="yes">一次传输 turn</td><td><code>zcode -p</code> 让主 Agent 调 <code>CreateWorkflow</code>；输出除 runId 外全部丢弃</td></tr>
+      <tr><td><code>issue-to-pr.dwf.ts</code></td><td class="yes">是</td><td>理解 issue、读代码、改代码、补测试</td></tr>
+      <tr><td><code>auditor.dwf.ts</code></td><td class="yes">是</td><td>审查精确 SHA 的 diff 并产出 verdict</td></tr>
+    </tbody>
+  </table>
+
+  <section class="answer" style="border-left-color: var(--amber);">
+    <strong style="color: var(--amber);">队列语义：未合并 PR 不阻塞下一张。</strong>
+    单写者约束的是「同一时刻一个 active job」，不是「同一时刻一个 open PR」。
+    A 交付后 push 分支、开 PR、转 <code>ready-for-human</code>，lease 立即释放；daemon 随即从
+    <code>origin/main</code> 为 B 开新分支。A 的 PR 没有被及时 review / merge，不会阻塞 B。
+    只有显式依赖（<code>blockedBy</code> / <code>Depends on: #N</code>）才让 B 等待 A 关闭。
+    如果 A 在 B 执行期间合并，B 在交付前 rebase 到最新 main；冲突转人工。
+    人工把 A 重新打回 <code>ready-for-agent</code> 时，返工复用 A 的原分支和原 PR，不新开第二个 PR。
+  </section>
+
+  <footer>
+    设计依据：<code>docs/research/2026-10-30-zcode-issue-to-pr-daemon.md</code>。
+    这是设计草图，不是实现；图中红框是唯一的模型调用点。workflow 固定使用
+    <code>.zcode/workflows/</code> 的 project scope，daemon 不传
+    <code>modelSelection</code>。
+  </footer>
+</body>
+</html>
