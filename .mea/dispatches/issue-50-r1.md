@@ -1,6 +1,6 @@
 # MEA dispatch — issue #50 r1
 
-- Issue: https://github.com/jasonQin6/taskboard/issues/50
+- Issue: original-repository issue #50
 - Profile: `$HOME/.codex/skills/MEA/projects/jasonQin6-taskboard.md`
 - Branch: `codex/issue-batch`
 - Dispatch parent tip: `d3dadd1ea438d45e627d9e8829a59acb0f9df31e`

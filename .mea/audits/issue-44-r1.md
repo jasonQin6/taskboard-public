@@ -1,6 +1,6 @@
 # 审计报告：issue #44「[Phase 1][S3] ZCode 只读 adapter 与同屏展示」(r1)
 
-- **issue**: https://github.com/jasonQin6/taskboard/issues/44
+- **issue**: original-repository issue #44
 - **base_sha**: `477bcc53280b75ead4e6889421bdd5294d487b11`
 - **target_sha**: `e304043f8862fa4a19fb7e630741447aacfa6780`（被审 head）
 - **被审 head 复核（Stop 条件）**: 提交报告前 `git -C ../taskboard-zcode rev-parse harness/zcode` = `e304043f8862fa4a19fb7e630741447aacfa6780` ✓

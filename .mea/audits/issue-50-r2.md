@@ -1,6 +1,6 @@
 # MEA audit — issue #50 r2
 
-- Issue: https://github.com/jasonQin6/taskboard/issues/50
+- Issue: original-repository issue #50
 - Dispatch: `.mea/dispatches/issue-50-r1.md`（r2 无新 dispatch；r1 decision 的四项返工即本轮 scope）
 - r1 audit: `.mea/audits/issue-50-r1.md`
 - r1 decision: `.mea/decisions/issue-50-r1.md`

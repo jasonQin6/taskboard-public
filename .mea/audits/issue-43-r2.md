@@ -1,6 +1,6 @@
 # Issue #43 S2 独立审计（r2）
 
-- Issue: https://github.com/jasonQin6/taskboard/issues/43
+- Issue: original-repository issue #43
 - Base SHA: `379505ba35e454f8bdf638427d24092a20bb7c8e`
 - Target SHA: `d368df6f353e313043ca87c7c4df4510ce59954a`
 - Reviewed HEAD: `d368df6f353e313043ca87c7c4df4510ce59954a`

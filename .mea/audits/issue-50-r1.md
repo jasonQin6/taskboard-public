@@ -1,6 +1,6 @@
 # MEA audit — issue #50 r1
 
-- Issue: https://github.com/jasonQin6/taskboard/issues/50
+- Issue: original-repository issue #50
 - Dispatch: `.mea/dispatches/issue-50-r1.md`
 - base_sha: `d48277ddb8e301dfc3e2148398480e02d5ae34f4`
 - target_sha（dispatch 指定）: `91d0b4c4d5a7712be88acb36f58f2e6aafa61d91`

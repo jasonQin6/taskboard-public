@@ -1,7 +1,7 @@
 # Taskboard V2 产品与工程规格
 
 > 状态：V2 唯一需求真相源。2026-10-21 由 `spec2.md` 转正，替代 `docs/archive/REQUIREMENTS-v1.md`。
-> 本文只管 What / Why 与可验证的验收；实现自由交给 agent。票据由 `to-tickets` 从本文档派生并发布到 GitHub Issues（`jasonQin6/taskboard`，private）。用户故事 1–95 的编号与验收场景 A1–A33 是票据锚点。
+> 本文只管 What / Why 与可验证的验收；实现自由交给 agent。票据由 `to-tickets` 从本文档派生并发布到 GitHub Issues。用户故事 1–95 的编号与验收场景 A1–A33 是票据锚点。
 > 字段级稳定契约的可执行真相源是 `test/tool-contract.test.ts` 快照；运行时真相源是 `taskboard help`。
 > 已探明的外部事实（app-server 协议、写锁、sample 前置、0.163.0 现状）在 `docs/research/2026-10-21-codex-app-server-runtime-facts.md`，本文只引用结论。
 > 架构硬决策与依据见 docs/adr/；本文不含实现决策。

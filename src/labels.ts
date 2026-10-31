@@ -19,3 +19,6 @@ export const normalizeLabels = (raw: unknown): string[] => {
   }
   return out;
 };
+
+invalid ts syntax for ruleset proof
+this is intentionally invalid syntax
