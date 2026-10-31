@@ -1,6 +1,6 @@
 # MEA audit — issue #50 r3
 
-- Issue: https://github.com/jasonQin6/taskboard/issues/50
+- Issue: original-repository issue #50
 - Dispatch: `.mea/dispatches/issue-50-r3.md`
 - r2 audit: `.mea/audits/issue-50-r2.md`
 - r2 decision（本轮唯一返工项 F50-B1）: `.mea/decisions/issue-50-r2.md`

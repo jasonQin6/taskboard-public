@@ -1,6 +1,6 @@
 # MEA decision — issue #50 r2
 
-- issue: https://github.com/jasonQin6/taskboard/issues/50
+- issue: original-repository issue #50
 - profile: `$HOME/.codex/skills/MEA/projects/jasonQin6-taskboard.md`
 - branch: `codex/issue-batch`
 - base_sha: `fb45bbb447578d04bf17508ebc07d69ec2e5a20f`

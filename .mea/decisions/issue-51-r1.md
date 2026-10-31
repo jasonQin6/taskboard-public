@@ -1,6 +1,6 @@
 # MEA decision - issue #51
 
-- issue: https://github.com/jasonQin6/taskboard/issues/51
+- issue: original-repository issue #51
 - lane branch: `issue-51-test-hardening`
 - base_sha: `9e4b366d97f6deb36b001096600899bf8cc4fb4a`
 - target_sha: `293ce9c1d4ccf8b10d52974d4ded6afb5e70b8df`

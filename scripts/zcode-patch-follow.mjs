@@ -9,11 +9,11 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 
 const UPSTREAM_URL = "https://github.com/zai-org/ZCode.git";
-const MAIN_CHECKOUT = join(homedir(), "Documents/workspace/ZCode");
-const WORKTREE = join(homedir(), "Documents/workspace/zcode-headless-hooks");
+const MAIN_CHECKOUT = process.env.ZCODE_CHECKOUT ?? join(homedir(), "ZCode");
+const WORKTREE = process.env.ZCODE_HOOKS_WORKTREE ?? join(MAIN_CHECKOUT, ".worktrees", "headless-hooks");
 const BRANCH = "fix/headless-workspace-hook-trust";
 const OUT_ROOT = join(homedir(), ".zcode/patched-bundle");
-const PNPM = join(homedir(), "Library/pnpm/bin/pnpm");
+const PNPM = process.env.PNPM_BIN ?? "pnpm";
 const run = (cmd, cwd, opts = {}) =>
   execSync(cmd, { cwd, stdio: opts.quiet ? "pipe" : "inherit", encoding: "utf8" });
 const out = (cmd, cwd) => execSync(cmd, { cwd, encoding: "utf8" }).trim();
